@@ -12,13 +12,14 @@ from scipy import ndimage
 # from picamera import PiCamera
 
 # Módulo do lcd
-from lcd_module.main_lcd import escreve_lcd
+# from lcd_module.main_lcd import escreve_lcd
 
 import datetime
 import os
 import errno
 
-import RPi.GPIO as GPIO
+
+# import RPi.GPIO as GPIO
 
 
 class Scanner:
@@ -26,7 +27,8 @@ class Scanner:
         """ Construtor da classe Scanner: inicializa constantes e configura gpios
         """
 
-        escreve_lcd('Inicializando...')
+        # ========== ========== # Inicialização das variáveis ========== ==========
+        # escreve_lcd('Inicializando...')
 
         self.INI_CAMERA = 'Inicializando \ncamera'
         self.AGUARDANDO = 'Aguardando \ninstrucao'
@@ -60,11 +62,13 @@ class Scanner:
 
         # Cria os diretórios para imagens e pdfs
         self.cria_diretorio('images/images-')
-        self.cria_diretorio('pdf/pdf-')
+        self.cria_diretorio('pdfs/pdf-')
 
         # Inicializa a câmera
         # self.camera = PiCamera()
 
+        # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
+        """
         # Configura os pinos para a numeração de GPIOs
         GPIO.setmode(GPIO.BCM)
 
@@ -83,12 +87,12 @@ class Scanner:
                               bouncetime=300)
         GPIO.add_event_detect(7, GPIO.FALLING, callback=self.cancela_scan,
                               bouncetime=300)
-
+        """
         # Teste de imagem capturada
         # self.img_teste = 'images/page1.jpg'
         self.img_teste = 'images/original1523547772.6299927.jpg'
 
-        escreve_lcd(self.AGUARDANDO)
+        # escreve_lcd(self.AGUARDANDO)
 
     # ========== ========== Definições dos métodos ========== ==========
 
@@ -108,44 +112,25 @@ class Scanner:
         # self.img_original = img.copy()  # Faz uma cópia da imagem capturada e inicializa o atributo img_original.
 
         # Área de teste
-        escreve_lcd(self.CAP_IMG)
+        # escreve_lcd(self.CAP_IMG)
         img_original = cv2.imread(self.img_teste)  # Faz a leitura de uma imagem teste
 
-        escreve_lcd(self.ROT_IMG)
+        # escreve_lcd(self.ROT_IMG)
         img_rotacionada = ndimage.rotate(img_original, 180)  # Rotaciona a imagem original em 180º
 
         img_recortada = scanner.detecta_contornos(img_rotacionada)
-        while img_recortada is False:  # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem        
-            escreve_lcd(scanner.N_DETECT_BORDAS)
-            escreve_lcd(scanner.ALERT_POS_CAM)
+        # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem, não prossegue
+        while img_recortada is False:
+            # escreve_lcd(scanner.N_DETECT_BORDAS)
+            # escreve_lcd(scanner.ALERT_POS_CAM)
 
             img_original = cv2.imread(scanner.img_teste)
             img_recortada = scanner.detecta_contornos(img_original)
         else:
-            escreve_lcd(scanner.BORDAS_DETECT)
+            # escreve_lcd(scanner.BORDAS_DETECT)
 
-        # Chama a função para aplicar filtos (processo final)
-        img_filtrada = scanner.aplica_filtros(img_recortada)
-
-        # Área de teste       
-
-        # cv2.imwrite('original' + str(datetime.datetime.now()) + '.jpg',
-        # img)  # Salva a imagem com o nome composto com a data.
-
-    def salva_imagem(self, img):
-        '''
-        :param img: Imagem a ser salva
-        :return: None
-        '''
-
-        nome_arquivo = self.diretorio_img + '/foto-' + self.get_date() + '.jpg'
-
-        # Verifica se o nome de arquivo já existe
-        if os.path.exists(nome_arquivo):  # Se existir, atualiza data/hora
-            nome_arquivo = self.diretorio_img + '/foto-' + self.get_date() + '.jpg'
-            cv2.imwrite(nome_arquivo, img)
-        else:
-            cv2.imwrite(nome_arquivo, img)
+            # Chama a função para aplicar filtos (processo final)
+            self.aplica_filtros(img_recortada)
 
     def detecta_contornos(self, img):
         '''
@@ -156,18 +141,18 @@ class Scanner:
         '''
 
         # Redimensionamento da imagem para melhor processamento.
-        escreve_lcd(self.REDIM_IMG)
+        # escreve_lcd(self.REDIM_IMG)
         ratio = img.shape[0] / 500.0  # Proporção para redimensionamento.
         img_reduzida = imutils.resize(img, height=500)  # Redimensionamento proporcional.
 
-        escreve_lcd(self.DETECT_BORDAS)
+        # escreve_lcd(self.DETECT_BORDAS)
         # Conversão da imagem para escala monocromática
         img_gray = cv2.cvtColor(img_reduzida, cv2.COLOR_BGR2GRAY)
         # Aplicação do filtro Gaussiano para melhorar detecção de bordas.
         img_blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
         img_canny = cv2.Canny(img_blur, 75, 200)  # Detecta bordas na imagem
 
-        escreve_lcd(self.DETECT_CONTORNOS)
+        # escreve_lcd(self.DETECT_CONTORNOS)
         # Detecta os contornos da imagem e seleciona os 5 maiores contornos detectados.
         (_, cnts, _) = cv2.findContours(img_canny.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
@@ -187,7 +172,7 @@ class Scanner:
                 return False
 
     def aplica_filtros(self, img):
-        escreve_lcd(self.APLICA_FILTROS)
+        # escreve_lcd(self.APLICA_FILTROS)
 
         # Filtro Gaussiano aplicado para atenuação de ruídos na imagem
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Conversão da imagem para a escala monocromática
@@ -201,7 +186,7 @@ class Scanner:
         # img_thresh = cv2.adaptiveThreshold(img_clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         # cv2.THRESH_BINARY, 13, 10)
 
-        escreve_lcd(self.AGUARDANDO)
+        # escreve_lcd(self.AGUARDANDO)
 
         cv2.imshow('Resultado', img_gray)
         # cv2.imwrite(str(time.time())+'.jpg', img_gray)
@@ -209,6 +194,21 @@ class Scanner:
         cv2.destroyAllWindows()
 
         self.salva_imagem(img_gray)
+
+    def salva_imagem(self, img):
+        '''
+        :param img: Imagem a ser salva
+        :return: None
+        '''
+
+        nome_arquivo = self.diretorio_img + '/foto-' + self.get_date() + '.jpg'
+
+        # Verifica se o nome de arquivo já existe
+        if os.path.exists(nome_arquivo):  # Se existir, atualiza data/hora
+            nome_arquivo = self.diretorio_img + '/foto-' + self.get_date() + '.jpg'
+            cv2.imwrite(nome_arquivo, img)
+        else:
+            cv2.imwrite(nome_arquivo, img)
 
     def get_date(self):
         temp = str(datetime.datetime.now())  # Obtém data e hora atual.
@@ -223,7 +223,7 @@ class Scanner:
         return ''.join(list_temp)  # Converte a lista para string
 
     def cria_diretorio(self, tipo):
-        escreve_lcd(self.CRIANDO_DIRETORIO)
+        # escreve_lcd(self.CRIANDO_DIRETORIO)
 
         nome_diretorio = tipo + self.get_date()
         print(nome_diretorio)
@@ -236,21 +236,24 @@ class Scanner:
                     self.diretorio_img = nome_diretorio
             except OSError as ose:
                 if ose.errno != errno.EEXIST:
-                    escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
+                    # escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
                     self.cria_diretorio()
 
     def cria_pdf(self, channel):
-        escreve_lcd(self.CRIANDO_PDF)
+        pass
+        # escreve_lcd(self.CRIANDO_PDF)
         # TODO implementar criação do PDF com as imagens
-        escreve_lcd(self.PDF_CRIADO)
+        # escreve_lcd(self.PDF_CRIADO)
 
     def copia_pendrive(self, channel):
-        escreve_lcd(self.COPIANDO_PENDRIVE)
+        pass
+        # escreve_lcd(self.COPIANDO_PENDRIVE)
         # TODO implementar detecção de pendrive e cópia de arquivo
-        escreve_lcd(self.PDF_COPIADO)
+        # escreve_lcd(self.PDF_COPIADO)
 
     def cancela_scan(self, channel):
-        escreve_lcd(self.SCAN_CANCELADO)
+        pass
+        # escreve_lcd(self.SCAN_CANCELADO)
 
 
 # ========== ========== Função principal ========== ==========
@@ -268,12 +271,12 @@ if __name__ == '__main__':
     # Chama a função para detectar bordas
     """img_recortada = scanner.detecta_contornos(img_rotacionada)
     while img_recortada is False:  # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem        
-        escreve_lcd(scanner.N_DETECT_BORDAS)
-        escreve_lcd(scanner.ALERT_POS_CAM)
+        # escreve_lcd(scanner.N_DETECT_BORDAS)
+        # escreve_lcd(scanner.ALERT_POS_CAM)
         img_original = cv2.imread(scanner.img_teste)
         img_recortada = scanner.detecta_contornos(img_original)
     else:        
-        escreve_lcd(scanner.BORDAS_DETECT)"""
+        # # escreve_lcd(scanner.BORDAS_DETECT)"""
 
     # Chama a função para aplicar filtos (processo final)
     # img_filtrada = scanner.aplica_filtros(img_recortada)
