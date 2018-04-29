@@ -21,12 +21,12 @@ class PDFGen(FPDF):
 
         # Define um apelido para o número total de páginas. Será substituído quando o documento for fechado
         self.alias_nb_pages()
-        self.add_page()  # Adiciona uma nova página ao documento
-        self.set_font('Times', '', 12)
+        # self.add_page()  # Adiciona uma nova página ao documento
+        # self.set_font('Times', '', 12)
 
     def header(self):
         '''
-        Cria um cabeçalho na página cabeçalho da página
+        Cabeçalho da página.
         :return: None
         '''
         self.image(self.logo, 10, 8, 33)  # Logo do PDF
@@ -36,10 +36,13 @@ class PDFGen(FPDF):
         self.ln(20)  # Quebra a linha com espaçamento 20 pixels
 
     def footer(self):
-        """ Rodapé da página """
+        '''
+        Rodapé da página. None
+        :return:
+        '''
         self.set_y(-15)  # 1.5 cm de distância da parte inferior da página
         self.set_font('Arial', 'I', 8)  # Fonte Arial, Itálico, tamanho 8
-        self.image('logo_ifmt.png', x=0, y=0, h=10)
+        # self.image('logo_ifmt.png', x=0, y=0, h=10)
         self.cell(0, 10, 'Digitalizado em: {}/{}/{}'.format(self.day, self.month, self.year))
         self.cell(0, 10, 'Página ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')  # Número da página
 
@@ -52,10 +55,14 @@ class PDFGen(FPDF):
         :param h: Altura da imagem. Se não especificada, é assumida a altura original da imagem.
         :return: None
         '''
-        self.image(image, x, y, w, h)
         self.add_page()
+        self.image(image, x, y, w, h)
 
     def get_date(self):
+        '''
+        Obtém data, hora, minutos e segundos atuais.
+        :return: Uma string no formato AAAA-MM-DD-HH-mm-ss
+        '''
         temp = str(datetime.datetime.now())  # Obtém data e hora atual.
         temp = temp.replace(' ', ':')  # Sobrescreve espaço e coloca :
         temp = temp.replace(':', '-')  # Sobrescreve : e coloca -
@@ -68,15 +75,27 @@ class PDFGen(FPDF):
         return ''.join(list_temp)  # Converte a lista para string
 
     def salva_pdf(self, diretorio, nome):
-        self.output(diretorio + nome + '.pdf')
+        '''
+        Salva o arquivo PDF no diretório especificado com o nome espcificado.
+        :param diretorio: Diretório onde o arquivo PDF deve ser salvo.
+        :param nome: Nome do arquivo PDF. Especificar a extensão .pdf é opcional.
+        :return: None
+        '''
+        if '.pdf' in nome:
+            self.output(diretorio + nome)
+        else:
+            self.output(diretorio + nome + '.pdf')
 
 
 pdf = PDFGen()  # Cria uma instância da classe PDFGen
 
-"""for i in range(1, 41):
-    pdf.cell(0, 10, 'Escrevendo o número da linha' + str(i), 0, 1)
-"""
-
 for x in range(10):
     pdf.add_image('logo_ifmt.png', x=0, y=25)
-pdf.output(pdf.get_date() + '.pdf', 'F')
+
+try:
+    pdf.salva_pdf(diretorio='pdfs/', nome='PDF teste2.pdf')
+except PermissionError  as pe:
+    print(pe)
+
+# for i in range(1, 41):
+#    pdf.cell(0, 10, 'Escrevendo o número da linha' + str(i), 0, 1)

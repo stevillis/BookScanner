@@ -59,15 +59,13 @@ class Scanner:
 
         self.ALERT_POS_CAM = 'Ajuste a posicao\n da camera'
         self.ALERT_DIRETORIO_DUPLICADO = 'Diretorio \nduplicado'
+        self.ALERT_NOME_PDF_DUPLICADO = 'Nome PDF \nduplicado'
 
-        self.diretorio_pdf = ''
         self.diretorio_img = ''
 
-        # Cria os diretórios para imagens e pdfs
-        self.cria_diretorio('images/images-')
-        self.cria_diretorio('pdfs/pdf-')
-
-        self.PDFGen = PDFGen()
+        # Cria o diretório para imagens
+        self.cria_diretorio_imagens()
+        self.lista_imagens = []
 
         # Inicializa a câmera
         # self.camera = PiCamera()
@@ -103,8 +101,10 @@ class Scanner:
 
     def captura_imagem(self, channel):
         '''
-        :param camera: Instância da Camera usada para capturar a imagem.
-        :return: A imagem capturada no formato adequado para o processamento com o OpenCV.
+        Faz a captura da imagem e o processamento para detecção de bordas e cotornos. Direciona a imagem para a
+        aplicação de filtros e armazenamento da imagem.
+        :param channel: Utilizado para tratamento de evento com o botão (Ignorado no processamento de imagem).
+        :return: None.
         '''
 
         # self.camera.start_preview() # inicializa o preview da imagem
@@ -142,7 +142,8 @@ class Scanner:
         Detecta bordas e contornos na imagem, retornando a imagem recortada nas dimensões do contornos mais externo
         detectado.
         :param img: Utilizada para detecção de bordas.
-        :return: A imagem recortada com as dimensões onde contorno mais exterior foi detectado na imagem.
+        :return: A imagem recortada com as dimensões onde contorno mais exterior foi detectado na imagem ou False caso
+        não seja detectado um contorno em volta da página.
         '''
 
         # Redimensionamento da imagem para melhor processamento.
@@ -177,6 +178,11 @@ class Scanner:
                 return False
 
     def aplica_filtros(self, img):
+        '''
+        Aplica filtros à imagem para melhorar a qualidade da imagem e salva a imagem.
+        :param img: Imagem à ser processada.
+        :return: None.
+        '''
         # escreve_lcd(self.APLICA_FILTROS)
 
         # Filtro Gaussiano aplicado para atenuação de ruídos na imagem
@@ -202,8 +208,9 @@ class Scanner:
 
     def salva_imagem(self, img):
         '''
-        :param img: Imagem a ser salva
-        :return: None
+        Faz o armazenamento da imagem.
+        :param img: Imagem a ser salva.
+        :return: None.
         '''
 
         nome_arquivo = self.diretorio_img + '/foto-' + self.get_date() + '.jpg'
@@ -216,6 +223,10 @@ class Scanner:
             cv2.imwrite(nome_arquivo, img)
 
     def get_date(self):
+        '''
+        Obtém data, hora, minutos e segundos atuais.
+        :return: Uma string no formato AAAA-MM-DD-HH-mm-ss.
+        '''
         temp = str(datetime.datetime.now())  # Obtém data e hora atual.
         temp = temp.replace(' ', ':')  # Sobrescreve espaço e coloca :
         temp = temp.replace(':', '-')  # Sobrescreve : e coloca -
@@ -227,27 +238,42 @@ class Scanner:
                 break
         return ''.join(list_temp)  # Converte a lista para string
 
-    def cria_diretorio(self, tipo):
+    def cria_diretorio_imagens(self):
+        '''
+        Cria um diretório para as imagens em imagens/. O nome do diretório é composto por imagens-DD-MM-AA-HH-mm-ss.
+        :return: None.
+        '''
         # escreve_lcd(self.CRIANDO_DIRETORIO)
 
-        nome_diretorio = tipo + self.get_date()
-        print(nome_diretorio)
-        if not os.path.exists(nome_diretorio):
+        nome_diretorio = 'imagens/imagens' + self.get_date()  # Nome do diretório no formato imagens-DD-MM-AA-HH-mm-ss.
+        if not os.path.exists(nome_diretorio):  # Se o diretório não existir, então pode ser criado.
             try:
-                os.makedirs(nome_diretorio)
-                if tipo.startswith('pdf'):
-                    self.diretorio_pdf = nome_diretorio
-                else:
-                    self.diretorio_img = nome_diretorio
-            except OSError as ose:
-                if ose.errno != errno.EEXIST:
-                    # escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
-                    self.cria_diretorio()
+                os.makedirs(nome_diretorio)  # Cria um diretório com o nome gerado.
+                self.diretorio_img = nome_diretorio  # Atribui o nome do diretório ao atributo da class Scanner.
+            except OSError:  # Caso o diretório exista, é feita a tentativa de criar um diretório com o nome atualizado.
+                #  escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
+                self.cria_diretorio_imagens()
 
-    def cria_pdf(self, channel):
-        pass
+    def cria_pdf(self):
+        '''
+        Cria um PDF com as imagens capturadas e armazenadas na lista self.lista_imagens
+        :param diretorio: Diretório onde o PDF deve ser salvo.
+        :param nome: Nome do PDF a ser salvo.
+        :return: None
+        '''
         # escreve_lcd(self.CRIANDO_PDF)
-        # TODO implementar criação do PDF com as imagens
+        pdf = PDFGen()  # Objeto do tipo PDFGen usar os metódos de criação do PDF.
+        # Adiciona todas as imagens presentes na lista lista_imagens, uma em cada página do PDF.
+        for img in self.lista_imagens:
+            pdf.add_image(img)
+
+        # Tenta salvar o PDF. Caso o nome do arquivo já exista, um novo nome para o arquivo é criado.
+        try:
+            pdf.salva_pdf('pdf-' + self.get_date())
+        except PermissionError:
+            # escreve_lcd(self.ALERT_NOME_PDF_DUPLICADO)
+            pdf.salva_pdf('pdf-' + self.get_date())
+
         # escreve_lcd(self.PDF_CRIADO)
 
     def copia_pendrive(self, channel):
@@ -256,9 +282,28 @@ class Scanner:
         # TODO implementar detecção de pendrive e cópia de arquivo
         # escreve_lcd(self.PDF_COPIADO)
 
-    def cancela_scan(self, channel):
-        pass
+    def finaliza_scan(self, channel):
+        '''
+        Reinicializa o processo de escaneamento, permitindo outro ser iniciado ou a finalização do programa.
+        :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
+        :return: None.
+        '''
+        self.lista_imagens.clear()  # Limpa a lista de imagens
+        self.diretorio_img = ''  # Reinicia o nome do diretório das imagens
         # escreve_lcd(self.SCAN_CANCELADO)
+
+    def listar_imagens(self, diretorio):
+        '''
+        Lista os arquivos com extensão .jpg os ordena em uma lista.
+        :param diretorio: Diretório onde as imagens devem ser buscadas.
+        :return: None.
+        '''
+        # Cria uma lista com todos os arquivos com extensão .jpg presentes no diretório especificado.
+        for file in os.listdir(diretorio):
+            if file.endswith('.jpg'):
+                self.lista_imagens.append(file)
+
+        self.lista_imagens.sort()  # Ordena as imagens
 
 
 # ========== ========== Função principal ========== ==========
