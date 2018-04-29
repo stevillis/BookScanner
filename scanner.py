@@ -14,6 +14,9 @@ from scipy import ndimage
 # Módulo do lcd
 # from lcd_module.main_lcd import escreve_lcd
 
+# Módulo para criação de PDF
+from pdfgen import PDFGen
+
 import datetime
 import os
 import errno
@@ -63,6 +66,8 @@ class Scanner:
         # Cria os diretórios para imagens e pdfs
         self.cria_diretorio('images/images-')
         self.cria_diretorio('pdfs/pdf-')
+
+        self.PDFGen = PDFGen()
 
         # Inicializa a câmera
         # self.camera = PiCamera()
