@@ -1,9 +1,25 @@
 # coding: utf-8
-# Module to write messages in display LCD 16x2 or 20x4
-# coding: utf-8
+
+# ****************************************************************************
+# * Software: Módulo para escrever mensagens em display LCD 16x2 ou 20x4     *
+# * Versão:   0.1.3                                                          *
+# * Data:     01-05-2018                                                     *
+# * Última Atualização: 01-05-2018                                           *
+# *                                                                          *
+# * Autores: Ed' Wilson T. Ferreira                                          *
+# *          Gabriel Bastos                                                  *
+# *          Pammella Roberta                                                *
+# *          Stévillis Sousa                                                 *
+# * Sobre: Desenvolvido pelo Grupo de Pesquisa em Redes e Segurança - GPRS,  *
+# *        Instituto Federal de Educação, Ciência e Tecnologia de Mato       *
+# *        Grosso, Campus Cel. Octayde Jorge da Silva                        *
+# * Nome do Projeto: Scanner de livro: Um protótipo de baixo custo para      *
+# *                  contribuir na preservação da informação.                *
+# ****************************************************************************
+
 import time
 
-# Raspberry Pi pin configuration:
+# Pinos de configuração do Raspberry Pi (GPIOs).
 lcd_rs = 26
 lcd_en = 19
 lcd_d4 = 13
@@ -11,25 +27,31 @@ lcd_d5 = 6
 lcd_d6 = 5
 lcd_d7 = 11
 
-# Define LCD column and row size for 16x2 LCD.
+# Número de linhas e colunas do display.
 lcd_columns = 16
 lcd_rows = 2
 
 
-# Write message in LCD
 def escreve_lcd(msg):
-    # TODO docstring
+    '''
+    Escreve a mensagem especificada no display.
+    :param msg: Mensagem a ser escrita.
+    :return: None.
+    '''
 
     # Initialize the LCD using the pins above.
     lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows)
 
     lcd.clear()
     lcd.message(msg)
-    time.sleep(1)  # Delay de 200ms
+    time.sleep(1)  # Delay de 1s
 
 
 def limpa_lcd():
-    # TODO docstring
+    '''
+    Apaga a mensagem que estiver escrita no display.
+    :return: None.
+    '''
 
     lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows)
     lcd.clear()
