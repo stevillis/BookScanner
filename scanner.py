@@ -20,26 +20,26 @@
 # *                  contribuir na preservação da informação.                *
 # ****************************************************************************
 
+# Módulos para operações do sistema operacional e data
+import datetime
+import os
+
 # Módulos para manipulação da imagem, OpenCV e Raspberry PiCamera
+from scipy import ndimage
 from pyimagesearch import imutils
 from pyimagesearch.transform import four_point_transform
-from scipy import ndimage
 import cv2
 # from picamera.array import PiRGBArray
 # from picamera import PiCamera
+
+from pdfgen import PDFGen  # Módulo para criação de PDF
+
 
 # Módulo para configuração das GPIOs
 # import RPi.GPIO as GPIO
 
 # Módulo do lcd
 # from lcd_module.main_lcd import escreve_lcd
-
-# Módulo para criação de PDF
-from pdfgen import PDFGen
-
-# Módulos para operações do sistema operacional e data
-import os
-import datetime
 
 
 class Scanner:
@@ -80,8 +80,9 @@ class Scanner:
         self.ALERT_NOME_PDF_DUPLICADO = 'Nome PDF \nduplicado'
         self.ALERT_PDF_SEM_CONTEUDO = 'Precisa de pelo\nmenos uma imagem'
 
-        self.diretorio_img = ''
-        self._cria_diretorio_imagens()  # Cria o diretório para imagens
+        self._cria_diretorios('imagens', 'pdfs')  # Cria o diretório para imagens
+        self._remover_imgs()
+        self._remover_pdfs()
 
         # Inicializa a câmera
         # self.camera = PiCamera()
@@ -98,11 +99,11 @@ class Scanner:
         GPIO.setup(7, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
         # Adiciona detecção de evento nas GPIOs, com delay de 300ms
-        GPIO.add_event_detect(21, GPIO.FALLING, callback=self.captura_imagem,
+        GPIO.add_event_detect(21, GPIO.FALLING, callback=self.capturar_imagem,
                               bouncetime=300)
-        GPIO.add_event_detect(20, GPIO.FALLING, callback=self.cria_pdf,
+        GPIO.add_event_detect(20, GPIO.FALLING, callback=self.criar_pdf,
                               bouncetime=300)
-        GPIO.add_event_detect(16, GPIO.FALLING, callback=self.copia_pendrive,
+        GPIO.add_event_detect(16, GPIO.FALLING, callback=self.copiar_pdf_pendrive,
                               bouncetime=300)
         GPIO.add_event_detect(7, GPIO.FALLING, callback=self.cancela_scan,
                               bouncetime=300)
@@ -115,7 +116,7 @@ class Scanner:
 
     # ========== ========== Definições dos métodos ========== ==========
 
-    def captura_imagem(self, channel):
+    def capturar_imagem(self, channel):
         '''
         Faz a captura da imagem e o processamento para detecção de bordas e cotornos. Direciona a imagem para a
         aplicação de filtros e armazenamento da imagem.
@@ -141,7 +142,7 @@ class Scanner:
         print(self.ROT_IMG)
         img_rotacionada = ndimage.rotate(img_original, 180)  # Rotaciona a imagem original em 180º
 
-        img_recortada = self._detecta_contornos(img_rotacionada)
+        img_recortada = self._detectar_contornos(img_rotacionada)
         # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem, não prossegue
         while img_recortada is False:
             # escreve_lcd(scanner.N_DETECT_BORDAS)
@@ -150,15 +151,15 @@ class Scanner:
             print(scanner.ALERT_POS_CAM)
 
             img_original = cv2.imread(scanner.img_teste)
-            img_recortada = scanner.detecta_contornos(img_original)
+            img_recortada = scanner.detectar_contornos(img_original)
         else:
             # escreve_lcd(scanner.BORDAS_DETECT)
             print(scanner.BORDAS_DETECT)
 
             # Chama a função para aplicar filtos (processo final)
-            self._aplica_filtros(img_recortada)
+            self._aplicar_filtros(img_recortada)
 
-    def _detecta_contornos(self, img):
+    def _detectar_contornos(self, img):
         '''
         Detecta bordas e contornos na imagem, retornando a imagem recortada nas dimensões do contorno mais externo
         detectado.
@@ -201,7 +202,7 @@ class Scanner:
             else:
                 return False
 
-    def _aplica_filtros(self, img):
+    def _aplicar_filtros(self, img):
         '''
         Aplica filtros à imagem para melhorar a qualidade da imagem e salva a imagem.
         :param img: Imagem à ser processada.
@@ -230,9 +231,9 @@ class Scanner:
         cv2.waitKey(2000)
         cv2.destroyAllWindows()
 
-        self._salva_imagem(img_gray)
+        self._salvar_imagem(img_gray)
 
-    def _salva_imagem(self, img):
+    def _salvar_imagem(self, img):
         '''
         Faz o armazenamento da imagem.
         :param img: Imagem a ser salva.
@@ -241,11 +242,11 @@ class Scanner:
 
         # escreve_lcd(self.SAVE_IMG)
         print(self.SAVE_IMG)
-        nome_arquivo = self.diretorio_img + '/foto-' + self._get_date() + '.jpg'
+        nome_arquivo = 'foto-' + self._obter_data() + '.jpg'
 
         # Verifica se o nome de arquivo já existe
         if os.path.exists(nome_arquivo):  # Se existir, atualiza data/hora
-            nome_arquivo = self.diretorio_img + '/foto-' + self._get_date() + '.jpg'
+            nome_arquivo = 'foto-' + self._obter_data() + '.jpg'
             cv2.imwrite(nome_arquivo, img)
         else:
             cv2.imwrite(nome_arquivo, img)
@@ -253,7 +254,7 @@ class Scanner:
         # escreve_lcd(self.IMG_SAVE)
         print(self.IMG_SAVE)
 
-    def _get_date(self):
+    def _obter_data(self):
         '''
         Obtém data, hora, minutos e segundos atuais.
         :return: Uma string no formato AAAA-MM-DD-HH-mm-ss.
@@ -269,31 +270,55 @@ class Scanner:
                 break
         return ''.join(list_temp)  # Converte a lista para string
 
-    def _cria_diretorio_imagens(self):
+    def _cria_diretorios(self, *args):
         '''
-        Cria um diretório para as imagens em imagens/. O nome do diretório é composto por imagens-DD-MM-AA-HH-mm-ss.
+        Cria um diretório para as imagens e para os PDFs.
+        :param args: Lista com nomes de diretórios a serem criados.
         :return: None.
         '''
-        # escreve_lcd(self.CRIANDO_DIRETORIO_IMG)
-        print(self.CRIANDO_DIRETORIO_IMG)
 
-        nome_diretorio = 'imagens/imagens' + self._get_date() + '/'  # Nome do diretório no formato imagens-DD-MM-AA-HH-mm-ss.
-        if not os.path.exists(nome_diretorio):  # Se o diretório não existir, então pode ser criado.
-            try:
-                os.makedirs(nome_diretorio)  # Cria um diretório com o nome gerado.
-                self.diretorio_img = nome_diretorio  # Atribui o nome do diretório ao atributo da class Scanner.
-            except OSError:  # Caso o diretório exista, é feita a tentativa de criar um diretório com o nome atualizado.
-                #  escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
-                self._cria_diretorio_imagens()
+        for diretorio in args:
+            # escreve_lcd(self.CRIANDO_DIRETORIO_IMG)
+            print(self.CRIANDO_DIRETORIO_IMG)
 
-    def cria_pdf(self):
+            if not os.path.exists(diretorio):  # Se o diretório não existir, então pode ser criado.
+                try:
+                    os.makedirs(diretorio)  # Cria um diretório com o nome gerado.
+                except OSError:  # Caso o diretório exista, é feita a tentativa de criar um diretório com o nome atualizado.
+                    #  escreve_lcd(self.ALERT_DIRETORIO_DUPLICADO)
+                    print('Não foi possível criar o diretório')
+                    pass
+
+    def _remover_imgs(self):
+        '''
+        Remove o diretório especificado e ignora o erro de exclusão de arquivos somente de leitura. A exclusão do
+        diretório, assim como dos arquivos presentes no mesmo, é permanente.
+        :return:  None.
+        '''
+        diretorio_imgs = './imagens'
+        for file in os.listdir(diretorio_imgs):
+            os.remove(diretorio_imgs + '/' + file)
+            print(file, 'removido')
+
+    def _remover_pdfs(self):
+        '''
+        Remove todos os arquivos PDF do diretório pdfs.
+        :return: None.
+        '''
+        diretorio_pdf = './pdfs'
+        for file in os.listdir(diretorio_pdf):
+            os.remove(diretorio_pdf + '/' + file)
+            print(file, 'removido')
+
+    def criar_pdf(self):
         '''
         Cria um PDF com as imagens capturadas.
         :param diretorio: Diretório onde o PDF deve ser salvo.
         :param nome: Nome do PDF a ser salvo.
         :return: None
         '''
-        lista_imagens = self._listar_imagens(self.diretorio_img)
+        lista_imagens = self._listar_imagens('./imagens')
+        print(lista_imagens)
         if len(lista_imagens) == 0:  # Verifica se existe pelo menos uma imagem para criar o PDF.
             # escreve_lcd(self.ALERT_PDF_SEM_CONTEUDO)
             print(self.ALERT_PDF_SEM_CONTEUDO)
@@ -303,33 +328,36 @@ class Scanner:
             pdf = PDFGen()  # Objeto do tipo PDFGen usar os metódos de criação do PDF.
             # Adiciona todas as imagens presentes na lista lista_imagens, uma em cada página do PDF.
             for img in lista_imagens:
-                pdf.add_image(diretorio=self.diretorio_img, image=img, x=10, y=20, w=400, h=260)
+                pdf.add_image(diretorio='./imagens', imagem=img, w=405, h=265)
 
             # Tenta salvar o PDF. Caso o nome do arquivo já exista, um novo nome para o arquivo é criado.
             try:
-                pdf.salva_pdf(diretorio='pdfs/', nome='pdf-' + self._get_date())
+                pdf.salva_pdf(diretorio='pdfs/', nome='pdf-' + self._obter_data())
             except PermissionError:
                 # escreve_lcd(self.ALERT_NOME_PDF_DUPLICADO)
                 print(self.ALERT_NOME_PDF_DUPLICADO)
-                pdf.salva_pdf(diretorio='pdfs/', nome='pdf-' + self._get_date())
+                pdf.salva_pdf(diretorio='pdfs/', nome='pdf-' + self._obter_data())
+            self.copiar_pdf_pendrive('')
 
             # escreve_lcd(self.PDF_CRIADO)
             print(self.PDF_CRIADO)
 
-    def copia_pendrive(self, channel):
+    def copiar_pdf_pendrive(self, channel):
         pass
         # escreve_lcd(self.COPIANDO_PENDRIVE)
         # TODO implementar detecção de pendrive e cópia de arquivo
         # escreve_lcd(self.PDF_COPIADO)
 
-    def finaliza_scan(self, channel):
+    def finalizar_scan(self, channel):
         '''
         Reinicializa o processo de escaneamento, permitindo outro ser iniciado ou a finalização do programa.
         :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
         :return: None.
         '''
-        self.lista_imagens.clear()  # Limpa a lista de imagens
-        self.diretorio_img = ''  # Reinicia o nome do diretório das imagens
+        # Apaga o diretório com as imagens capturadas para gerar o PDF corrente.
+        self._remover_imgs()
+        self._remover_pdfs()  # Apaga todos os arquivos PDF criados no diretório pdfs
+
         # escreve_lcd(self.SCAN_CANCELADO)
 
     def _listar_imagens(self, diretorio):
@@ -355,5 +383,7 @@ if __name__ == '__main__':
     botao = input('Aguardando instrução: ')
     while botao != 'x':
         if botao == 'a':
-            scanner.cria_pdf()
+            scanner.criar_pdf()
         botao = input('Aguardando instrução: ')
+    else:
+        scanner.finalizar_scan(channel='')
