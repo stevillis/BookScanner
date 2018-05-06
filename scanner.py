@@ -45,7 +45,7 @@ import pyudev  # Módulo para monitoramento de USB
 from threading import Thread  # Módulo para processamento paralelo
 
 
-class Scanner(Thread):
+class Scanner():
     def __init__(self):
         """ Construtor da classe Scanner: inicializa constantes e configura gpios
         """
@@ -89,7 +89,7 @@ class Scanner(Thread):
         self._remover_pdfs()
 
         # Variável de controle de evento USB
-        self.estado_usb = ''
+        # self.estado_usb = ''
         self.nome_pdf_criado = ''
 
         # Inicializa a câmera
@@ -122,13 +122,14 @@ class Scanner(Thread):
 
         # escreve_lcd(self.AGUARDANDO)
 
-    def run(self):
+    """def run(self):
         '''
         Método que é executado quando a Thread é iniciada.
         :return: None
         '''
 
         self._evento_usb()
+    """
 
     # ========== ========== Definições dos métodos ========== ==========
 
@@ -349,32 +350,37 @@ class Scanner(Thread):
             # Tenta salvar o PDF. Caso o nome do arquivo já exista, um novo nome para o arquivo é criado.
             try:
                 nome_pdf = 'pdf-' + self._obter_data()
-                self.nome_pdf_criado = nome_pdf
+                self.nome_pdf_criado = nome_pdf + '.pdf'                
                 pdf.salva_pdf(diretorio='pdfs/', nome=nome_pdf)
+                print(self.PDF_CRIADO)
             except PermissionError:
                 # escreve_lcd(self.ALERT_NOME_PDF_DUPLICADO)
                 print(self.ALERT_NOME_PDF_DUPLICADO)
                 nome_pdf = 'pdf-' + self._obter_data()
-                self.nome_pdf_criado = nome_pdf
+                self.nome_pdf_criado = nome_pdf + '.pdf'
                 pdf.salva_pdf(diretorio='pdfs/', nome=nome_pdf)
-            self.copiar_pdf_pendrive('')
+                print(self.PDF_CRIADO)
+            self._copiar_pdf_pendrive()
 
             # escreve_lcd(self.PDF_CRIADO)
-            print(self.PDF_CRIADO)
+            
 
-    def copiar_pdf_pendrive(self, channel):
+    def _copiar_pdf_pendrive(self):
         '''
         Copia o arquivo PDF criado na pasta pdfs para a unidade de armazenamento conectada à USB.
-        :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
         :return: None.
         '''
         # escreve_lcd(self.COPIANDO_PENDRIVE)
-        self._montar_unidade()
-        arquivo = './pdfs/' + self.nome_pdf_criado
-        try:
-            os.system('sudo cp -r ' + arquivo + ' /media/usb')
-        except OSError as ose:
-            print(ose)
+        if self._montar_unidade():
+            arquivo = 'pdfs/' + self.nome_pdf_criado
+            try:
+                print('Copiando', arquivo)
+                os.system('sudo cp -r ' + arquivo + ' /media/usb')
+                print('PDF copiado!')
+            except OSError as ose:
+                print(ose)
+        else:
+            print('Precisa conectar o pen drive!')
 
         # escreve_lcd(self.PDF_COPIADO)
 
@@ -390,7 +396,7 @@ class Scanner(Thread):
         self._remover_pdfs()  # Apaga todos os arquivos PDF criados no diretório pdfs
 
         # Variável de controle de evento USB
-        self.estado_usb = ''
+        # self.estado_usb = ''
         self.nome_pdf_criado = ''
 
         # escreve_lcd(self.SCAN_CANCELADO)
@@ -404,13 +410,12 @@ class Scanner(Thread):
         # Cria uma lista com todos os arquivos com extensão .jpg presentes no diretório especificado.
         lista_imagens = []
         for file in os.listdir(diretorio):
-            if file.endswith('.jpg'):
-                lista_imagens.append(file)
+            lista_imagens.append(file)
 
         lista_imagens.sort()  # Ordena as imagens
         return lista_imagens
 
-    def _evento_usb(self):
+    """def _evento_usb(self):
         '''
         Monitora as portas USBs, esperando um dispositivo de armazenamento ser conetado.
         :return: None.
@@ -419,26 +424,26 @@ class Scanner(Thread):
         monitor = pyudev.Monitor.from_netlink(context)
         monitor.filter_by(subsystem='usb')
 
-        for device in iter(monitor.poll(), None):
+        for device in iter(monitor.poll, None):
             if device.action == 'add':
                 print('{} connected'.format(device))
                 self.estado_usb = 'conectado'
             if device.action == 'remove':
                 print('{} desconnected'.format(device))
                 self.estado_usb = 'desconectado'
+    """
 
     def _montar_unidade(self):
         '''
         Monta uma unidade de armazenamento, se esta estiver conectada à USB, em /media/usb.
         :return: True se a unidade de armazenamento foi montada, False caso contrário.
         '''
-        if self.estado_usb == 'conectado':
-            try:
-                os.system('sudo mount /dev/sda1 /media/usb')
-                return True
-            except OSError as ose:
-                print(ose)
-        else:
+        # if self.estado_usb == 'conectado':
+        try:
+            os.system('sudo mount /dev/sda1 /media/usb')
+            return True
+        except OSError as ose:
+            print(ose)
             print('Unidade de armazenamento desconectada!')
             return False
 
@@ -447,15 +452,15 @@ class Scanner(Thread):
         Desmonta uma unidade de armazenamento se esta estiver conectada à USB.
         :return: None.
         '''
-        if self.estado_usb == 'conectado':
-            try:
-                os.system('sudo umont /media/usb')
-            except OSError as ose:
-                print(ose)
-        else:
+        # if self.estado_usb == 'conectado':
+        try:
+            os.system('sudo umont /media/usb')
+        except OSError as ose:
+            print(ose)
             print('Unidade de armazenamento desconectada!')
 
     def _desligar_raspberry(self):
+        pass
         '''
         Desmonta a unidade de armazenamento, caso esteja montada, e desliga o Raspberry.
         :return: None
@@ -468,10 +473,9 @@ class Scanner(Thread):
 if __name__ == '__main__':
 
     scanner = Scanner()  # Cria um objeto scanner para manipular as operações do processamento de imagem.
+    # scanner.start() # Inicia a Thread que verifica evento USB
     botao = input('Aguardando instrução: ')
     while botao != 'x':
         if botao == 'a':
             scanner.criar_pdf()
         botao = input('Aguardando instrução: ')
-    else:
-        scanner.copiar_pdf_pendrive(channel='')
