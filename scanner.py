@@ -5,9 +5,9 @@
 # *           Pi Camera v2.1. Processa imagens utilizando OpenCV 3.3.0. Cria *
 # *           e salva arquivos PDF com as imagens processadas. Envia os      *
 # *           arquivos PDF para uma memória externa (Ex: pen drive).         *
-# * Versão:   0.5.2                                                          *
+# * Versão:   0.5.5                                                          *
 # * Data:     01-05-2018                                                     *
-# * Última Atualização: 05-05-2018                                           *
+# * Última Atualização: 09-05-2018                                           *
 # *                                                                          *
 # * Autores: Ed' Wilson T. Ferreira                                          *
 # *          Gabriel Bastos                                                  *
@@ -42,14 +42,11 @@ from pdfgen import PDFGen  # Módulo para criação de PDF
 
 import pyudev  # Módulo para monitoramento de USB
 
-from threading import Thread  # Módulo para processamento paralelo
 
-
-class Scanner(Thread):
+class Scanner:
     def __init__(self):
         """ Construtor da classe Scanner: inicializa constantes e configura gpios
         """
-        super().__init__()
 
         # ========== ========== # Inicialização das variáveis ========== ==========
         # escreve_lcd('Inicializando...')
@@ -113,7 +110,7 @@ class Scanner(Thread):
                               bouncetime=300)
         GPIO.add_event_detect(16, GPIO.FALLING, callback=self.copiar_pdf_pendrive,
                               bouncetime=300)
-        GPIO.add_event_detect(7, GPIO.FALLING, callback=self.cancela_scan,
+        GPIO.add_event_detect(7, GPIO.FALLING, callback=self.liga_desliga_raspberry,
                               bouncetime=300)
         """
         # Teste de imagem capturada
@@ -121,14 +118,6 @@ class Scanner(Thread):
         self.img_teste = 'images/original1523547772.6299927.jpg'
 
         # escreve_lcd(self.AGUARDANDO)
-
-    def run(self):
-        '''
-        Método que é executado quando a Thread é iniciada.
-        :return: None
-        '''
-
-        self._evento_usb()
 
     # ========== ========== Definições dos métodos ========== ==========
 
@@ -351,37 +340,34 @@ class Scanner(Thread):
                 nome_pdf = 'pdf-' + self._obter_data()
                 self.nome_pdf_criado = nome_pdf
                 pdf.salva_pdf(diretorio='pdfs/', nome=nome_pdf)
-            except PermissionError:
+                print(self.PDF_CRIADO)
+                self._copiar_pdf_pendrive()
+            except PermissionError as pe:
                 # escreve_lcd(self.ALERT_NOME_PDF_DUPLICADO)
-                print(self.ALERT_NOME_PDF_DUPLICADO)
-                nome_pdf = 'pdf-' + self._obter_data()
-                self.nome_pdf_criado = nome_pdf
-                pdf.salva_pdf(diretorio='pdfs/', nome=nome_pdf)
-            self.copiar_pdf_pendrive('')
+                print(pe)
 
-            # escreve_lcd(self.PDF_CRIADO)
-            print(self.PDF_CRIADO)
-
-    def copiar_pdf_pendrive(self, channel):
+    def _copiar_pdf_pendrive(self):
         '''
         Copia o arquivo PDF criado na pasta pdfs para a unidade de armazenamento conectada à USB.
-        :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
         :return: None.
         '''
         # escreve_lcd(self.COPIANDO_PENDRIVE)
-        self._montar_unidade()
-        arquivo = './pdfs/' + self.nome_pdf_criado
-        try:
-            os.system('sudo cp -r ' + arquivo + ' /media/usb')
-        except OSError as ose:
-            print(ose)
+        montou = self._montar_unidade()
+        while not montou:
+            print('Insira o pendrive')
+            montou = self._montar_unidade()
+            # escreve_lcd(self.PDF_COPIADO)
+        else:
+            try:
+                arquivo = './pdfs/' + self.nome_pdf_criado
+                os.system('sudo cp -r ' + arquivo + ' /media/usb')
+                print('PDF copiado!')
+            except OSError as ose:
+                print(ose)
 
-        # escreve_lcd(self.PDF_COPIADO)
-
-    def _finalizar_scan(self, channel):
+    def _finalizar_scan(self):
         '''
         Reinicializa o processo de escaneamento, permitindo outro ser iniciado ou a finalização do programa.
-        :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
         :return: None.
         '''
         self._cria_diretorios('imagens', 'pdfs')  # Cria o diretório para imagens
@@ -410,6 +396,7 @@ class Scanner(Thread):
         lista_imagens.sort()  # Ordena as imagens
         return lista_imagens
 
+    """
     def _evento_usb(self):
         '''
         Monitora as portas USBs, esperando um dispositivo de armazenamento ser conetado.
@@ -426,21 +413,30 @@ class Scanner(Thread):
             if device.action == 'remove':
                 print('{} desconnected'.format(device))
                 self.estado_usb = 'desconectado'
+    """
 
     def _montar_unidade(self):
         '''
         Monta uma unidade de armazenamento, se esta estiver conectada à USB, em /media/usb.
-        :return: True se a unidade de armazenamento foi montada, False caso contrário.
+        :return: True se a unidade de armazenamento foi montada, False caso contrário e None caso haja alguma exceção.
         '''
-        if self.estado_usb == 'conectado':
-            try:
+
+        try:
+            file = open('../boot/usb_temp.txt', 'r')  # Abre o arquivo usb_temp.txt em modo de leitura
+            estado_usb = file.readline()  # Lê a primeira linha do arquivo usb_temp.txt
+
+            if estado_usb == 'conectado':
                 os.system('sudo mount /dev/sda1 /media/usb')
                 return True
-            except OSError as ose:
-                print(ose)
-        else:
-            print('Unidade de armazenamento desconectada!')
-            return False
+            elif estado_usb == 'desconectado':
+                return False
+        except IOError as ioe:
+            print(ioe)
+            print('Erro de leitura/escrita do arquivo usb_temp.txt')
+            return None
+        except OSError as ose:
+            print(ose)
+            return None
 
     def _desmontar_unidade(self):
         '''
@@ -449,15 +445,15 @@ class Scanner(Thread):
         '''
         if self.estado_usb == 'conectado':
             try:
-                os.system('sudo umont /media/usb')
+                os.system('sudo umount /media/usb')
             except OSError as ose:
                 print(ose)
         else:
             print('Unidade de armazenamento desconectada!')
 
-    def _desligar_raspberry(self):
+    def ligar_desligar_raspberry(self):
         '''
-        Desmonta a unidade de armazenamento, caso esteja montada, e desliga o Raspberry.
+        Desmonta a unidade de armazenamento, caso esteja montada, e liga/desliga o Raspberry.
         :return: None
         '''
         # self._desmontar_unidade()
@@ -473,5 +469,3 @@ if __name__ == '__main__':
         if botao == 'a':
             scanner.criar_pdf()
         botao = input('Aguardando instrução: ')
-    else:
-        scanner.copiar_pdf_pendrive(channel='')
