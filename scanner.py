@@ -376,7 +376,6 @@ class Scanner:
         self._remover_pdfs()  # Apaga todos os arquivos PDF criados no diretório pdfs
 
         # Variável de controle de evento USB
-        self.estado_usb = ''
         self.nome_pdf_criado = ''
 
         # escreve_lcd(self.SCAN_CANCELADO)
@@ -390,8 +389,7 @@ class Scanner:
         # Cria uma lista com todos os arquivos com extensão .jpg presentes no diretório especificado.
         lista_imagens = []
         for file in os.listdir(diretorio):
-            if file.endswith('.jpg'):
-                lista_imagens.append(file)
+            lista_imagens.append(file)
 
         lista_imagens.sort()  # Ordena as imagens
         return lista_imagens
@@ -452,6 +450,7 @@ class Scanner:
             print('Unidade de armazenamento desconectada!')
 
     def ligar_desligar_raspberry(self):
+        pass
         '''
         Desmonta a unidade de armazenamento, caso esteja montada, e liga/desliga o Raspberry.
         :return: None
