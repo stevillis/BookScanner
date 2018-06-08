@@ -44,7 +44,7 @@ def escreve_lcd(msg):
 
     lcd.clear()
     lcd.message(msg)
-    time.sleep(1)  # Delay de 1s
+    time.sleep(2)  # Delay de 2s
 
 
 def limpa_lcd():

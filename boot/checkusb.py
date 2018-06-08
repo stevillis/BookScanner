@@ -28,6 +28,11 @@ sys.path.append('/home/pi/.local/lib/python3.5/site-packages')  # Adiciona o PAT
 
 import pyudev
 
+# Inicia o arquivo usb_temp.txt considerando USB desconectado
+file = open('usb_temp.txt', 'w')
+file.write('desconectado')
+file.close()
+
 context = pyudev.Context()
 monitor = pyudev.Monitor.from_netlink(context)
 monitor.filter_by(subsystem='usb')
@@ -35,7 +40,9 @@ monitor.filter_by(subsystem='usb')
 for device in iter(monitor.poll, None):
     file = open('usb_temp.txt', 'w')
     if device.action == 'add':
+        print('conectado')
         file.write('conectado')
     if device.action == 'remove':
+        print('desconectado')
         file.write('descontectado')
     file.close()

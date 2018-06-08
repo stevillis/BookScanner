@@ -1,0 +1,5 @@
+Adicionar as seguintes linhas ao final do arquivo crontab, acessando-o através do comando:
+sudo crontab -e
+
+@reboot sh /home/pi/Downloads/ProjetoScanner/boot/launcher.sh > /home/pi/logs/cronlog 2>&1
+@reboot sh /home/pi/Downloads/ProjetoScanner/launcher.sh > /home/pi/logs/cronlog 2>&1
