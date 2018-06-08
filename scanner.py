@@ -35,13 +35,13 @@ import shutil
 from pyimagesearch import imutils
 from pyimagesearch.transform import four_point_transform
 import cv2
-# from picamera.array import PiRGBArray
-# from picamera import PiCamera
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 from pdfgen import PDFGen  # Módulo para criação de PDF
 
 # Módulo para configuração das GPIOs
-# import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 
 # Módulo do lcd
 from lcd_module.main_lcd import escreve_lcd
@@ -76,7 +76,7 @@ class Scanner:
 
         # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
 
-        '''# Configura os pinos para a numeração de GPIOs
+        # Configura os pinos para a numeração de GPIOs
         GPIO.setmode(GPIO.BCM)
 
         #
@@ -92,7 +92,7 @@ class Scanner:
                               bouncetime=1000)
         GPIO.add_event_detect(16, GPIO.FALLING, callback=self.apagar_ultima_imagem,
                               bouncetime=1000)
-        '''
+
         # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
 
         escreve_lcd(self.AGUARDANDO)
@@ -106,6 +106,7 @@ class Scanner:
         aplicação de filtros e armazenamento da imagem.
         :param channel: Utilizado para tratamento de evento com o botão (Ignorado no processamento de imagem).
         :return: None.
+        '''
 
         escreve_lcd('Capturando \nimagem')
         print('Capturando \nimagem')
@@ -139,8 +140,6 @@ class Scanner:
         except:
             escreve_lcd('Erro de captura')
             print('Erro de captura')
-            '''
-        pass
 
     def _detectar_contornos(self, img):
         '''
@@ -231,6 +230,7 @@ class Scanner:
         Obtém data, hora, minutos e segundos atuais.
         :return: Uma string no formato AAAA-MM-DD-HH-mm-ss.
         '''
+
         temp = str(datetime.datetime.now())  # Obtém data e hora atual.
         temp = temp.replace(' ', ':')  # Sobrescreve espaço e coloca :
         temp = temp.replace(':', '-')  # Sobrescreve : e coloca -
@@ -276,6 +276,7 @@ class Scanner:
         :param nome: Nome do PDF a ser salvo.
         :return: None
         '''
+
         lista_imagens = self._listar_imagens('./imagens')
         if len(lista_imagens) == 0:  # Verifica se existe pelo menos uma imagem para criar o PDF.
             escreve_lcd('Precisa de pelo\nmenos uma imagem')
@@ -315,6 +316,7 @@ class Scanner:
         Copia o arquivo PDF criado na pasta pdfs para a unidade de armazenamento conectada à USB.
         :return: None.
         '''
+
         montou = self._montar_unidade()
         while not montou:
             escreve_lcd('Insira o\npendrive')
@@ -351,6 +353,7 @@ class Scanner:
         :param arquivo: O arquivo a ser determinado o tamanho.
         :return: O tamanho do arquivo em MegaBytes.
         '''
+
         try:
             BtoMB = (1 / (1024 * 1024))  # Conversão de Bytes para MegaBytes
             tamanho = os.path.getsize(arquivo)  # Tamanho do arquivo em Bytes
@@ -381,6 +384,7 @@ class Scanner:
         Reinicializa o processo de escaneamento, permitindo outro ser iniciado ou a finalização do programa.
         :return: None.
         '''
+
         self._criar_diretorios('imagens', 'pdfs',
                                '/home/pi/usb')  # Cria diretórios para imagens, pdfs e usb caso não existam
         # Apaga o diretório com as imagens capturadas para gerar o PDF corrente.
@@ -394,6 +398,7 @@ class Scanner:
         :param diretorio: Diretório onde as imagens devem ser buscadas.
         :return: Uma lista ordenada com os nomes das imagens em ordem ascendente.
         '''
+
         # Cria uma lista com todos os arquivos presentes no diretório especificado.
         lista_imagens = []
         for file in os.listdir(diretorio):
@@ -440,6 +445,7 @@ class Scanner:
         Desmonta uma unidade de armazenamento se esta estiver conectada à USB.
         :return: None.
         '''
+
         if self.estado_usb == 'conectado':
             try:
                 os.system('sudo umount /home/pi/usb')
@@ -454,6 +460,7 @@ class Scanner:
         :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
         :return: None
         '''
+        
         diretorio_imagens = './imagens'
         lista_imagens = self._listar_imagens(diretorio_imagens)
         if len(lista_imagens) == 0:
