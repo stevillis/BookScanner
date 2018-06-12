@@ -7,7 +7,7 @@
 # *           arquivos PDF para uma memória externa (Ex: pen drive).         *
 # * Versão:   0.7.3                                                          *
 # * Data:     12-12-2017                                                     *
-# * Última Atualização: 08-06-2018                                           *
+# * Última Atualização: 12-06-2018                                           *
 # *                                                                          *
 # * Autores: Ed' Wilson T. Ferreira                                          *
 # *          Gabriel Bastos                                                  *
@@ -35,6 +35,7 @@ import shutil
 from pyimagesearch import imutils
 from pyimagesearch.transform import four_point_transform
 import cv2
+from scipy import ndimage
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 
@@ -56,36 +57,26 @@ class Scanner:
         escreve_lcd('Inicializando...')
         print('Inicializando...')
 
-        '''
-        Usado para câmera usb
-        if cv2.VideoCapture(0).isOpened():
-            cv2.VideoCapture(0).release()
-        self.cap = cv2.VideoCapture(0)  
-        print(self.cap)'''
-
         self.AGUARDANDO = 'Aguardando \ninstrucao'  # Mensagem padrão após cada operação realizada
 
-        self._criar_diretorios('imagens', 'pdfs')  # Cria o diretório para imagens e pdfs caso não existam.
+        self._criar_diretorios('imagens', 'pdfs')  # Cria o diretório para imagens e pdfs caso não existam
 
         # Variável de controle de evento USB
         self.estado_usb = ''
         self.nome_pdf_criado = ''
 
-        self._remover_conteudo_diretorio('./imagens',
-                                         './pdfs')  # Apaga o conteúdo presente nos diretórios imagens e pdfs
+        # Apaga o conteúdo presente nos diretórios imagens e pdfs
+        self._remover_conteudo_diretorio('./imagens', './pdfs')
 
         # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
+        GPIO.setmode(GPIO.BCM)  # Configura os pinos para a numeração de GPIOs
 
-        # Configura os pinos para a numeração de GPIOs
-        GPIO.setmode(GPIO.BCM)
-
-        #
-        # Configura as GPIOs como entrada
+        # Configura as GPIOs como entrada em nível alto
         GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-        # Adiciona detecção de evento nas GPIOs, com delay de 300ms
+        # Adiciona detecção de evento nas GPIOs, com delay de 1s
         GPIO.add_event_detect(21, GPIO.FALLING, callback=self.capturar_imagem,
                               bouncetime=1000)
         GPIO.add_event_detect(20, GPIO.FALLING, callback=self.criar_pdf,
@@ -93,13 +84,10 @@ class Scanner:
         GPIO.add_event_detect(16, GPIO.FALLING, callback=self.apagar_ultima_imagem,
                               bouncetime=1000)
 
-        # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
-
         escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
 
-        # ========== ========== Definições dos métodos ========== ==========
-
+    # ========== ========== Definições dos métodos ========== ==========
     def capturar_imagem(self, channel):
         '''
         Faz a captura da imagem e o processamento para detecção de bordas e cotornos. Direciona a imagem para a
@@ -116,10 +104,10 @@ class Scanner:
             # camera.stop_preview() # Finaliza o preview da imagem
             camera.resolution = (1920, 1080)  # resolução da imagem 1920x1080
 
-            captura = PiRGBArray(camera)  # Instância do formato de captura a ser obtido.
+            captura = PiRGBArray(camera)  # Instância do formato de captura a ser obtido
 
-            camera.capture(captura, format="bgr")  # Configura a captura da câmera para o formato BGR.
-            img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV.
+            camera.capture(captura, format="bgr")  # Configura a captura da câmera para o formato BGR
+            img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV
             # cv2.imshow('Captura', img)
             # cv2.waitKey(5000)
             # cv2.destroyAllWindows()
@@ -150,26 +138,26 @@ class Scanner:
         não seja detectado um contorno em volta da página.
         '''
 
-        # Redimensionamento da imagem para melhor processamento.
-        ratio = img.shape[0] / 500.0  # Proporção para redimensionamento.
-        img_reduzida = imutils.resize(img, height=500)  # Redimensionamento proporcional.
+        # Redimensionamento da imagem para melhor processamento
+        ratio = img.shape[0] / 500.0  # Proporção para redimensionamento
+        img_reduzida = imutils.resize(img, height=500)  # Redimensionamento proporcional
 
         # Conversão da imagem para escala monocromática
         img_gray = cv2.cvtColor(img_reduzida, cv2.COLOR_BGR2GRAY)
-        # Aplicação do filtro Gaussiano para melhorar detecção de bordas.
+        # Aplicação do filtro Gaussiano para melhorar detecção de bordas
         img_blur = cv2.GaussianBlur(img_gray, (5, 5), 0)
         img_canny = cv2.Canny(img_blur, 75, 200)  # Detecta bordas na imagem
 
-        # Detecta os contornos da imagem e seleciona os 5 maiores contornos detectados.
+        # Detecta os contornos da imagem e seleciona os 5 maiores contornos detectados
         (_, cnts, _) = cv2.findContours(img_canny.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
 
-        # Iteração entre os contornos detectados para determinar qual representa o contorno da página.
+        # Iteração entre os contornos detectados para determinar qual representa o contorno da página
         for c in cnts:
-            peri = cv2.arcLength(c, True)  # Aproximação do contorno por arco.
-            approx = cv2.approxPolyDP(c, 0.02 * peri, True)  # Aproximação poligonal.
+            peri = cv2.arcLength(c, True)  # Aproximação do contorno por arco
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)  # Aproximação poligonal
 
-            # Se o contorno aproximado tem 4 pontos, então os pontos correspondem às bordas da imagem.
+            # Se o contorno aproximado tem 4 pontos, então os pontos correspondem às bordas da imagem
             if len(approx) == 4:
                 contornos = approx
                 img_recortada = four_point_transform(img, contornos.reshape(4, 2) * ratio)
@@ -237,8 +225,8 @@ class Scanner:
         list_temp = []
         for i in temp:
             if i != '.':
-                list_temp.append(
-                    i)  # Adiciona os elementos da string que são diferentes de . (ponto) e para caso encontre . (ponto)
+                # Adiciona os elementos da string que são diferentes de . (ponto) e para caso encontre . (ponto)
+                list_temp.append(i)
             else:
                 break
         return ''.join(list_temp)  # Converte a lista para string
@@ -251,7 +239,7 @@ class Scanner:
         '''
 
         for diretorio in args:
-            if not os.path.exists(diretorio):  # Se o diretório não existir, então pode ser criado.
+            if not os.path.exists(diretorio):  # Se o diretório não existir, então pode ser criado
                 try:
                     print('Criando diretório', diretorio)
                     os.makedirs(diretorio)  # Cria um diretório com o nome especificado
@@ -274,11 +262,11 @@ class Scanner:
         Cria um PDF com as imagens capturadas.
         :param diretorio: Diretório onde o PDF deve ser salvo.
         :param nome: Nome do PDF a ser salvo.
-        :return: None
+        :return: None.
         '''
 
         lista_imagens = self._listar_imagens('./imagens')
-        if len(lista_imagens) == 0:  # Verifica se existe pelo menos uma imagem para criar o PDF.
+        if len(lista_imagens) == 0:  # Verifica se existe pelo menos uma imagem para criar o PDF
             escreve_lcd('Precisa de pelo\nmenos uma imagem')
             print('Precisa de pelo\nmenos uma imagem')
             escreve_lcd(self.AGUARDANDO)
@@ -289,12 +277,12 @@ class Scanner:
         else:
             escreve_lcd('Criando PDF com\nas imagens')
             print('Criando PDF com\nas imagens')
-            pdf = PDFGen()  # Objeto do tipo PDFGen usar os metódos de criação do PDF.
-            # Adiciona todas as imagens presentes na lista lista_imagens, uma em cada página do PDF.
+            pdf = PDFGen()  # Objeto do tipo PDFGen usar os metódos de criação do PDF
+            # Adiciona todas as imagens presentes na lista lista_imagens, uma em cada página do PDF
             for img in lista_imagens:
                 pdf.add_image(diretorio='./imagens', imagem=img, w=405, h=265)
 
-            # Tenta salvar o PDF. Caso o nome do arquivo já exista, um novo nome para o arquivo é criado.
+            # Tenta salvar o PDF. Caso o nome do arquivo já exista, um novo nome para o arquivo é criado
             try:
                 nome_pdf = 'pdf-' + self._obter_data() + '.pdf'
                 self.nome_pdf_criado = nome_pdf
@@ -328,18 +316,13 @@ class Scanner:
                 print('Copiando PDF \npara o pendrive')
 
                 pdf = './pdfs/' + self.nome_pdf_criado
-                print(pdf)
-
                 nome_pendrive = str(os.listdir('/media/pi/')[0])  # Obtém o nome do pendrive
                 print('nome pendrive', nome_pendrive)
 
-                os.system(
-                    'sudo cp -a ' + pdf + ' /media/pi/' + nome_pendrive + '/')  # Copia o PDF para o
+                os.system('sudo cp -a ' + pdf + ' /media/pi/' + nome_pendrive + '/')  # Copia o PDF para o pendrive
 
                 escreve_lcd('PDF copiado para\no pendrive')
                 print(self.nome_pdf_criado, 'copiado')
-
-                # self._remover_conteudo_diretorio('./imagens', './pdfs') # Apaga o conteúdo presente nos diretórios imagens e pdfs
 
                 escreve_lcd(self.AGUARDANDO)
                 print(self.AGUARDANDO)
@@ -368,9 +351,9 @@ class Scanner:
         :param diretorio: Diretório a ser determinado a quantidade de memória livre.
         :return: A quantidade de memória livre em MB.
         '''
-        # total: Quantidade total de memória.
-        # used: Memória usada.
-        # free: Memória livre.
+        # total: Quantidade total de memória
+        # used: Memória usada
+        # free: Memória livre
 
         BtoMB = (1 / (1024 * 1024))  # Conversão de Bytes para MegaBytes.
         res = shutil.disk_usage(diretorio)  # Retorna usage(total, used, free)
@@ -379,19 +362,6 @@ class Scanner:
 
         return free  # Retorna a quantidade de memória livre em MB
 
-    def _finalizar_scan(self):
-        '''
-        Reinicializa o processo de escaneamento, permitindo outro ser iniciado ou a finalização do programa.
-        :return: None.
-        '''
-
-        self._criar_diretorios('imagens', 'pdfs',
-                               '/home/pi/usb')  # Cria diretórios para imagens, pdfs e usb caso não existam
-        # Apaga o diretório com as imagens capturadas para gerar o PDF corrente.
-
-        # Variável de controle de evento USB
-        self.nome_pdf_criado = ''
-
     def _listar_imagens(self, diretorio):
         '''
         Lista as imagens presentes no diretório especificado e as ordena em uma lista.
@@ -399,7 +369,7 @@ class Scanner:
         :return: Uma lista ordenada com os nomes das imagens em ordem ascendente.
         '''
 
-        # Cria uma lista com todos os arquivos presentes no diretório especificado.
+        # Cria uma lista com todos os arquivos presentes no diretório especificado
         lista_imagens = []
         for file in os.listdir(diretorio):
             lista_imagens.append(file)
@@ -420,10 +390,16 @@ class Scanner:
             if estado_usb == 'conectado':
                 escreve_lcd('Pendrive\ndetectado')
                 print('Pendrive\ndetectado')
+
                 nome_pendrive = str(os.listdir('/media/pi/')[0])  # Obtém o nome do pendrive
                 if os.path.ismount('/media/pi/' + nome_pendrive):
                     escreve_lcd('Pendrive\nconectado')
                     print('Pendrive\nconectado')
+
+                    # Mostra a quantidade de memória livre no pendrive
+                    memoria_livre = self._get_size_diretorio('/media/pi/' + nome_pendrive)
+                    escreve_lcd('{:.2f} MBs\nlivres'.format(memoria_livre))
+                    print('{:.2f} MBs\nlivres'.format(memoria_livre))
                     return True
                 else:
                     escreve_lcd('Erro ao ler\npendrive')
@@ -452,15 +428,15 @@ class Scanner:
             except OSError as ose:
                 print(ose)
         else:
-            print('Unidade de armazenamento desconectada!')
+            print('Unidade de armazenamento desconectada')
 
     def apagar_ultima_imagem(self, channel):
         '''
         Apaga a última imagem tirada e gravada na pasta imagens se existir alguma imagem na pasta.
         :param channel: Utilizado para tratamento de evento com o botão (Ignorado neste método).
-        :return: None
+        :return: None.
         '''
-        
+
         diretorio_imagens = './imagens'
         lista_imagens = self._listar_imagens(diretorio_imagens)
         if len(lista_imagens) == 0:
@@ -469,25 +445,19 @@ class Scanner:
         else:
             escreve_lcd('Removendo\nultima imagem')
             print('Removendo\nultima imagem')
+
             os.remove(diretorio_imagens + '/' + lista_imagens[-1])
             print(lista_imagens[-1], 'removido')
 
         escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
 
-    def ligar_desligar_raspberry(self):
-        pass
-        '''
-        Desmonta a unidade de armazenamento, caso esteja montada, e liga/desliga o Raspberry.
-        :return: None
-        '''
-        # self._desmontar_unidade()
-        # TODO Configuração de hardware para desligamento do Raspberry.
+    # ========== ========== Função principal ========== ==========
 
 
-# ========== ========== Função principal ========== ==========
 if __name__ == '__main__':
 
     scanner = Scanner()  # Cria um objeto scanner para manipular as operações do processamento de imagem.
-    while True:  # Executa o programa em um loop infinito, até que se pressione o botão para desligar.
+    # Executa o programa em um loop infinito, aguardando eventos nos botões, até que se pressione o botão para desligar.
+    while True:
         pass
