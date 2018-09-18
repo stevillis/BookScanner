@@ -19,7 +19,7 @@
 
 import time
 
-# Pinos de configuração do Raspberry Pi (GPIOs)
+# Pinos de configuração do Raspberry Pi (GPIOs).
 lcd_rs = 26
 lcd_en = 19
 lcd_d4 = 13
@@ -27,7 +27,7 @@ lcd_d5 = 6
 lcd_d6 = 5
 lcd_d7 = 11
 
-# Número de linhas e colunas do display
+# Número de linhas e colunas do display.
 lcd_columns = 16
 lcd_rows = 2
 
@@ -39,11 +39,11 @@ def escreve_lcd(msg):
     :return: None.
     '''
 
-    # Inicializa o LCD utilizando os pinos definidos acima
+    # Initialize the LCD using the pins above.
     lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows)
 
-    lcd.clear()  # Limpa o que tiver escrito no LCD
-    lcd.message(msg)  # Escreve a mensagem no LCD
+    lcd.clear()
+    lcd.message(msg)
     time.sleep(2)  # Delay de 2s
 
 
@@ -58,7 +58,7 @@ def limpa_lcd():
 
 
 if __name__ == '__main__':
-    import Adafruit_CharLCD as LCD  # Módulo que implementa as funções de leitura/escrita do LCD
+    import Adafruit_CharLCD as LCD
 
     escreve_lcd('teste')
 else:

@@ -20,6 +20,8 @@
 # *                  contribuir na preservação da informação.                *
 # ****************************************************************************
 
+# Mensagens de erro encontram-se em /home/pi/logs/cronlog
+
 # Adição manual de PATH dos módulos não built-in utilizados
 import sys
 
@@ -108,8 +110,8 @@ class Scanner:
 
             camera.capture(captura, format="bgr")  # Configura a captura da câmera para o formato BGR
             img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV
-            # cv2.imshow('Captura', img)
-            # cv2.waitKey(5000)
+            # cv2.imshow('Captura', ndimage.rotate(img, 180))
+            # cv2.waitKey(6000)
             # cv2.destroyAllWindows()
 
             escreve_lcd('Processando \nimagem')
@@ -182,7 +184,7 @@ class Scanner:
         # img_clahe = clahe.apply(img_gray)
 
         # Threshold adaptativo aplicado para deixar a imagem com aspecto de scaneada
-        # img_thresh = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 65, 10)    
+        # img_thresh = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 65, 10)
 
         # cv2.imshow('Resultado', img_gray)
         # cv2.waitKey(5000)
@@ -243,7 +245,7 @@ class Scanner:
                 try:
                     print('Criando diretório', diretorio)
                     os.makedirs(diretorio)  # Cria um diretório com o nome especificado
-                except OSError:  # Erro ao criar o diretório                    
+                except OSError:  # Erro ao criar o diretório
                     print('Não foi possível criar o diretório')
 
     def _remover_conteudo_diretorio(self, *args):
@@ -320,9 +322,9 @@ class Scanner:
                 print('nome pendrive', nome_pendrive)
 
                 os.system('sudo cp -a ' + pdf + ' /media/pi/' + nome_pendrive + '/')  # Copia o PDF para o pendrive
-
                 escreve_lcd('PDF copiado para\no pendrive')
-                print(self.nome_pdf_criado, 'copiado')
+                self._remover_conteudo_diretorio('./imagens', './pdfs')
+                # self._desmontar_unidade(nome_pendrive)
 
                 escreve_lcd(self.AGUARDANDO)
                 print(self.AGUARDANDO)
@@ -388,22 +390,24 @@ class Scanner:
             estado_usb = file.readline()  # Lê a primeira linha do arquivo usb_temp.txt
 
             if estado_usb == 'conectado':
-                escreve_lcd('Pendrive\ndetectado')
-                print('Pendrive\ndetectado')
+                # escreve_lcd('Pendrive\ndetectado')
+                # print('Pendrive\ndetectado')
 
                 nome_pendrive = str(os.listdir('/media/pi/')[0])  # Obtém o nome do pendrive
+                # escreve_lcd(nome_pendrive)
                 if os.path.ismount('/media/pi/' + nome_pendrive):
                     escreve_lcd('Pendrive\nconectado')
                     print('Pendrive\nconectado')
+                    file.close()
 
                     # Mostra a quantidade de memória livre no pendrive
-                    memoria_livre = self._get_size_diretorio('/media/pi/' + nome_pendrive)
-                    escreve_lcd('{:.2f} MBs\nlivres'.format(memoria_livre))
-                    print('{:.2f} MBs\nlivres'.format(memoria_livre))
+                    # memoria_livre = self._get_size_diretorio('/media/pi/' + nome_pendrive)
+                    # escreve_lcd('{:.2f} MBs\nlivres'.format(memoria_livre))
+                    # print('{:.2f} MBs\nlivres'.format(memoria_livre))
                     return True
                 else:
-                    escreve_lcd('Erro ao ler\npendrive')
-                    print('Erro ao ler\npendrive')
+                    # escreve_lcd('Erro ao ler\npendrive')
+                    # print('Erro ao ler\npendrive')
                     return False
             elif estado_usb == 'desconectado':
                 print('desconectado')
@@ -416,19 +420,26 @@ class Scanner:
             print(ose)
             return None
 
-    def _desmontar_unidade(self):
+    def _desmontar_unidade(self, nome):
         '''
         Desmonta uma unidade de armazenamento se esta estiver conectada à USB.
         :return: None.
         '''
+        try:
+            os.system('sudo umount /media/pi/' + nome)
 
-        if self.estado_usb == 'conectado':
-            try:
-                os.system('sudo umount /home/pi/usb')
-            except OSError as ose:
-                print(ose)
-        else:
-            print('Unidade de armazenamento desconectada')
+            escreve_lcd('...')
+            estado_usb = ''
+            while estado_usb != 'desconectado':
+                escreve_lcd('Remova o \npendrive')
+                file = open('boot/usb_temp.txt', 'r')  # Abre o arquivo usb_temp.txt em modo de leitura
+                estado_usb = file.readline()  # Lê a primeira linha do arquivo usb_temp.txt
+                file.close()
+            escreve_lcd('123')
+
+        except OSError as ose:
+            escreve_lcd(ose)
+            print(ose)
 
     def apagar_ultima_imagem(self, channel):
         '''
