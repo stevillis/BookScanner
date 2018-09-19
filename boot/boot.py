@@ -1,4 +1,24 @@
 # coding: utf-8
+
+# ****************************************************************************
+# * Software: Script para ligar/desligar o Raspberry.                        *
+# * Referência: Youtube. 'RetroPie Add A Power Button / Switch Raspberry Pi 1*
+# *             2 3'. <https://www.youtube.com/watch?v=4nTuzIY0i3k>          *
+# * Versão:   0.0.1                                                          *
+# * Data:     30-04-2018                                                     *
+# * Última Atualização: 18-09-2018                                           *
+# *                                                                          *
+# * Autores: Ed' Wilson T. Ferreira                                          *
+# *          Gabriel Bastos                                                  *
+# *          Pammella Roberta                                                *
+# *          Stévillis Sousa                                                 *
+# * Sobre: Desenvolvido pelo Grupo de Pesquisa em Redes e Segurança - GPRS,  *
+# *        Instituto Federal de Educação, Ciência e Tecnologia de Mato       *
+# *        Grosso, Campus Cel. Octayde Jorge da Silva                        *
+# * Nome do Projeto: Scanner de livro: Um protótipo de baixo custo para      *
+# *                  contribuir na preservação da informação.                *
+# ****************************************************************************
+
 import RPi.GPIO as GPIO
 import time
 import subprocess
