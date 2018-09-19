@@ -5,9 +5,9 @@
 # *           Pi Camera v2.1. Processa imagens utilizando OpenCV 3.3.0. Cria *
 # *           e salva arquivos PDF com as imagens processadas. Envia os      *
 # *           arquivos PDF para uma memória externa (Ex: pen drive).         *
-# * Versão:   0.7.3                                                          *
+# * Versão:   0.7.5                                                          *
 # * Data:     12-12-2017                                                     *
-# * Última Atualização: 12-06-2018                                           *
+# * Última Atualização: 19-09-2018                                           *
 # *                                                                          *
 # * Autores: Ed' Wilson T. Ferreira                                          *
 # *          Gabriel Bastos                                                  *
@@ -38,16 +38,18 @@ from pyimagesearch import imutils
 from pyimagesearch.transform import four_point_transform
 import cv2
 from scipy import ndimage
-from picamera.array import PiRGBArray
-from picamera import PiCamera
+# from picamera.array import PiRGBArray
+# from picamera import PiCamera
 
 from pdfgen import PDFGen  # Módulo para criação de PDF
 
 # Módulo para configuração das GPIOs
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 
 # Módulo do lcd
-from lcd_module.main_lcd import escreve_lcd
+# from lcd_module.main_lcd import escreve_lcds
+
+import time
 
 
 class Scanner:
@@ -56,7 +58,7 @@ class Scanner:
         """
 
         # ========== ========== # Inicialização das variáveis ========== ==========
-        escreve_lcd('Inicializando...')
+        # escreve_lcd('Inicializando...')
         print('Inicializando...')
 
         self.AGUARDANDO = 'Aguardando \ninstrucao'  # Mensagem padrão após cada operação realizada
@@ -71,23 +73,25 @@ class Scanner:
         self._remover_conteudo_diretorio('./imagens', './pdfs')
 
         # ========== ========== # Configuração dos pinos do Raspberry ========== ==========
-        GPIO.setmode(GPIO.BCM)  # Configura os pinos para a numeração de GPIOs
+        # GPIO.setmode(GPIO.BCM)  # Configura os pinos para a numeração de GPIOs
 
         # Configura as GPIOs como entrada em nível alto
-        GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
         # Adiciona detecção de evento nas GPIOs, com delay de 1s
-        GPIO.add_event_detect(21, GPIO.FALLING, callback=self.capturar_imagem,
-                              bouncetime=1000)
-        GPIO.add_event_detect(20, GPIO.FALLING, callback=self.criar_pdf,
-                              bouncetime=1000)
-        GPIO.add_event_detect(16, GPIO.FALLING, callback=self.apagar_ultima_imagem,
-                              bouncetime=1000)
+        # GPIO.add_event_detect(21, GPIO.FALLING, callback=self.capturar_imagem,
+        #                      bouncetime=1000)
+        # GPIO.add_event_detect(20, GPIO.FALLING, callback=self.criar_pdf,
+        #                      bouncetime=1000)
+        # GPIO.add_event_detect(16, GPIO.FALLING, callback=self.apagar_ultima_imagem,
+        #                      bouncetime=1000)
 
-        escreve_lcd(self.AGUARDANDO)
+        # escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
+        self.time1 = time.time()
+        print(self.time1)
 
     # ========== ========== Definições dos métodos ========== ==========
     def capturar_imagem(self, channel):
@@ -98,38 +102,46 @@ class Scanner:
         :return: None.
         '''
 
-        escreve_lcd('Capturando \nimagem')
+        # escreve_lcd('Capturando \nimagem')
         print('Capturando \nimagem')
-        try:
-            # Inicializa a câmera
-            camera = PiCamera()
-            # camera.stop_preview() # Finaliza o preview da imagem
-            camera.resolution = (1920, 1080)  # resolução da imagem 1920x1080
+        # try:
+        # Inicializa a câmera
+        # camera = PiCamera()
+        # camera.stop_preview() # Finaliza o preview da imagem
+        # camera.resolution = (1920, 1080)  # resolução da imagem 1920x1080
 
-            captura = PiRGBArray(camera)  # Instância do formato de captura a ser obtido
+        # captura = PiRGBArray(camera)  # Instância do formato de captura a ser obtido
 
-            camera.capture(captura, format="bgr")  # Configura a captura da câmera para o formato BGR
-            img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV
-            # cv2.imshow('Captura', ndimage.rotate(img, 180))
-            # cv2.waitKey(6000)
-            # cv2.destroyAllWindows()
+        # camera.capture(captura, format="bgr")  # Configura a captura da câmera para o formato BGR
+        # img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV
 
-            escreve_lcd('Processando \nimagem')
-            print('Processando \nimagem')
+        img = cv2.imread('livro.jpg')
+        cv2.imshow('Original', img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
-            img_rotacionada = ndimage.rotate(img, 180)  # Rotaciona a imagem original em 180º
-            img_recortada = self._detectar_contornos(img_rotacionada)
-            # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem, não prossegue
-            if img_recortada is False:
-                escreve_lcd('Ajuste a posicao\nda camera')
-                print('Ajuste a posicao\n da camera')
-            else:  # Em caso de detecção das bordas da folha, aplicam-se filtros na imagem e salva a mesma
-                self._aplicar_filtros(img_recortada)
+        # cv2.imshow('Captura', ndimage.rotate(img, 180))
+        # cv2.waitKey(6000)
+        # cv2.destroyAllWindows()
 
-            camera.close()  # Finaliza o processo de captura da câmera
-        except:
-            escreve_lcd('Erro de captura')
-            print('Erro de captura')
+        # escreve_lcd('Processando \nimagem')
+        print('Processando \nimagem')
+
+        # img_rotacionada = ndimage.rotate(img, 180)  # Rotaciona a imagem original em 180º
+
+        img_recortada = self._detectar_contornos(img)
+        # Enquanto não detectar 4 pontos (aproximação de um retângulo) de contorno na imagem, não prossegue
+        if img_recortada is False:
+            # escreve_lcd('Ajuste a posicao\nda camera')
+            print('Ajuste a posicao\n da camera')
+        else:  # Em caso de detecção das bordas da folha, aplicam-se filtros na imagem e salva a mesma
+            self._aplicar_filtros(img_recortada)
+
+        # camera.close()  # Finaliza o processo de captura da câmera
+
+    # except:
+    # escreve_lcd('Erro de captura')
+    #    print('Erro de captura')
 
     def _detectar_contornos(self, img):
         '''
@@ -152,6 +164,7 @@ class Scanner:
 
         # Detecta os contornos da imagem e seleciona os 5 maiores contornos detectados
         (_, cnts, _) = cv2.findContours(img_canny.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
         cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
 
         # Iteração entre os contornos detectados para determinar qual representa o contorno da página
@@ -161,10 +174,18 @@ class Scanner:
 
             # Se o contorno aproximado tem 4 pontos, então os pontos correspondem às bordas da imagem
             if len(approx) == 4:
+                print(cv2.contourArea(c))
                 contornos = approx
                 img_recortada = four_point_transform(img, contornos.reshape(4, 2) * ratio)
 
-                return img_recortada  # Retorna os pontos que definem as dimensões da borda e a
+                img_temp = img_reduzida.copy()
+                cv2.drawContours(img_temp, [contornos], -1, (0, 255, 0), 2)
+                cv2.imshow('Contornos', img_temp)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+                # return img_recortada  # Retorna os pontos que definem as dimensões da borda e a
+                return ndimage.rotate(img_recortada, 180)  # Rotaciona a imagem original em 180º
             else:
                 return False
 
@@ -199,20 +220,17 @@ class Scanner:
         :return: None.
         '''
 
-        escreve_lcd('Salvando \nimagem')
+        # escreve_lcd('Salvando \nimagem')
         print('Salvando \nimagem')
         nome_arquivo = 'imagens/foto-' + self._obter_data() + '.jpg'
 
-        # Verifica se o nome de arquivo já existe
-        if os.path.exists(nome_arquivo):  # Se existir, atualiza data/hora
-            nome_arquivo = 'imagens/foto-' + self._obter_data() + '.jpg'
-            cv2.imwrite(nome_arquivo, img)
-        else:
-            cv2.imwrite(nome_arquivo, img)
+        cv2.imwrite(nome_arquivo, img)
+        print(self.time1)
+        print(time.time() - self.time1)
 
-        escreve_lcd('Imagem salva')
+        # escreve_lcd('Imagem salva')
         print('Imagem salva')
-        escreve_lcd(self.AGUARDANDO)
+        # escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
 
     def _obter_data(self):
@@ -269,15 +287,15 @@ class Scanner:
 
         lista_imagens = self._listar_imagens('./imagens')
         if len(lista_imagens) == 0:  # Verifica se existe pelo menos uma imagem para criar o PDF
-            escreve_lcd('Precisa de pelo\nmenos uma imagem')
+            # escreve_lcd('Precisa de pelo\nmenos uma imagem')
             print('Precisa de pelo\nmenos uma imagem')
-            escreve_lcd(self.AGUARDANDO)
+            # escreve_lcd(self.AGUARDANDO)
             print(self.AGUARDANDO)
         # elif len(os.listdir('./pdfs')) > 0: # Verifica se já existe pelo menos um PDF na pasta pdfs
         #    print(self.nome_pdf_criado, 'já existe')
         #    self._copiar_pdf_pendrive() # Se o arquivo já existe, então copia para o pendrive
         else:
-            escreve_lcd('Criando PDF com\nas imagens')
+            # escreve_lcd('Criando PDF com\nas imagens')
             print('Criando PDF com\nas imagens')
             pdf = PDFGen()  # Objeto do tipo PDFGen usar os metódos de criação do PDF
             # Adiciona todas as imagens presentes na lista lista_imagens, uma em cada página do PDF
@@ -289,16 +307,16 @@ class Scanner:
                 nome_pdf = 'pdf-' + self._obter_data() + '.pdf'
                 self.nome_pdf_criado = nome_pdf
                 pdf.salva_pdf(diretorio='pdfs/', nome=nome_pdf)
-                escreve_lcd('PDF criado com \nsucesso')
+                # escreve_lcd('PDF criado com \nsucesso')
                 print('PDF criado com \nsucesso')
 
                 tamanho_pdf = self._get_size_arquivo('pdfs/' + nome_pdf)
-                escreve_lcd('Tamanho PDF:\n{:.2f} MB'.format(tamanho_pdf))
+                # escreve_lcd('Tamanho PDF:\n{:.2f} MB'.format(tamanho_pdf))
                 print('Tamanho PDF:\n{:.2f} MB'.format(tamanho_pdf))
 
                 self._copiar_pdf_pendrive()  # Copia o PDF para o pendrive
             except PermissionError as pe:
-                escreve_lcd('Erro ao criar\n PDF')
+                # escreve_lcd('Erro ao criar\n PDF')
                 print(pe)
 
     def _copiar_pdf_pendrive(self):
@@ -309,12 +327,12 @@ class Scanner:
 
         montou = self._montar_unidade()
         while not montou:
-            escreve_lcd('Insira o\npendrive')
+            # escreve_lcd('Insira o\npendrive')
             print('Insira o\npendrive')
             montou = self._montar_unidade()
         else:
             try:
-                escreve_lcd('Copiando PDF \npara o pendrive')
+                # escreve_lcd('Copiando PDF \npara o pendrive')
                 print('Copiando PDF \npara o pendrive')
 
                 pdf = './pdfs/' + self.nome_pdf_criado
@@ -322,14 +340,14 @@ class Scanner:
                 print('nome pendrive', nome_pendrive)
 
                 os.system('sudo cp -a ' + pdf + ' /media/pi/' + nome_pendrive + '/')  # Copia o PDF para o pendrive
-                escreve_lcd('PDF copiado para\no pendrive')
+                # escreve_lcd('PDF copiado para\no pendrive')
                 self._remover_conteudo_diretorio('./imagens', './pdfs')
                 # self._desmontar_unidade(nome_pendrive)
 
-                escreve_lcd(self.AGUARDANDO)
+                # escreve_lcd(self.AGUARDANDO)
                 print(self.AGUARDANDO)
             except OSError as ose:
-                escreve_lcd(str(ose))
+                # escreve_lcd(str(ose))
                 print(ose)
 
     def _get_size_arquivo(self, arquivo):
@@ -396,7 +414,7 @@ class Scanner:
                 nome_pendrive = str(os.listdir('/media/pi/')[0])  # Obtém o nome do pendrive
                 # escreve_lcd(nome_pendrive)
                 if os.path.ismount('/media/pi/' + nome_pendrive):
-                    escreve_lcd('Pendrive\nconectado')
+                    # escreve_lcd('Pendrive\nconectado')
                     print('Pendrive\nconectado')
                     file.close()
 
@@ -428,17 +446,17 @@ class Scanner:
         try:
             os.system('sudo umount /media/pi/' + nome)
 
-            escreve_lcd('...')
+            # escreve_lcd('...')
             estado_usb = ''
             while estado_usb != 'desconectado':
-                escreve_lcd('Remova o \npendrive')
+                # escreve_lcd('Remova o \npendrive')
                 file = open('boot/usb_temp.txt', 'r')  # Abre o arquivo usb_temp.txt em modo de leitura
                 estado_usb = file.readline()  # Lê a primeira linha do arquivo usb_temp.txt
                 file.close()
-            escreve_lcd('123')
+            # escreve_lcd('123')
 
         except OSError as ose:
-            escreve_lcd(ose)
+            # escreve_lcd(ose)
             print(ose)
 
     def apagar_ultima_imagem(self, channel):
@@ -451,24 +469,26 @@ class Scanner:
         diretorio_imagens = './imagens'
         lista_imagens = self._listar_imagens(diretorio_imagens)
         if len(lista_imagens) == 0:
-            escreve_lcd('Nenhuma imagem\na ser excluida')
+            # escreve_lcd('Nenhuma imagem\na ser excluida')
             print('Nenhuma imagem\na ser excluida')
         else:
-            escreve_lcd('Removendo\nultima imagem')
+            # escreve_lcd('Removendo\nultima imagem')
             print('Removendo\nultima imagem')
 
             os.remove(diretorio_imagens + '/' + lista_imagens[-1])
             print(lista_imagens[-1], 'removido')
 
-        escreve_lcd(self.AGUARDANDO)
+        # escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
 
-    # ========== ========== Função principal ========== ==========
+
+# ========== ========== Função principal ========== ==========
 
 
 if __name__ == '__main__':
 
     scanner = Scanner()  # Cria um objeto scanner para manipular as operações do processamento de imagem.
     # Executa o programa em um loop infinito, aguardando eventos nos botões, até que se pressione o botão para desligar.
-    while True:
-        pass
+    # while True:
+    #    pass
+    scanner.capturar_imagem('')
