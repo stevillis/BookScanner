@@ -37,7 +37,7 @@ import shutil
 from pyimagesearch import imutils
 from pyimagesearch.transform import four_point_transform
 import cv2
-from scipy import ndimage
+# from scipy import ndimage
 # from picamera.array import PiRGBArray
 # from picamera import PiCamera
 
@@ -56,7 +56,7 @@ class Scanner:
     def __init__(self):
         """ Construtor da classe Scanner: inicializa constantes e configura gpios
         """
-
+        self.time1 = time.time()
         # ========== ========== # Inicialização das variáveis ========== ==========
         # escreve_lcd('Inicializando...')
         print('Inicializando...')
@@ -90,10 +90,9 @@ class Scanner:
 
         # escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
-        self.time1 = time.time()
-        print(self.time1)
 
-    # ========== ========== Definições dos métodos ========== ==========
+        # ========== ========== Definições dos métodos ========== ==========
+
     def capturar_imagem(self, channel):
         '''
         Faz a captura da imagem e o processamento para detecção de bordas e cotornos. Direciona a imagem para a
@@ -116,9 +115,9 @@ class Scanner:
         # img = captura.array  # Converte o formato da imagem para o formato a ser usado com o OpenCV
 
         img = cv2.imread('livro.jpg')
-        cv2.imshow('Original', img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow('Original', img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
         # cv2.imshow('Captura', ndimage.rotate(img, 180))
         # cv2.waitKey(6000)
@@ -174,18 +173,18 @@ class Scanner:
 
             # Se o contorno aproximado tem 4 pontos, então os pontos correspondem às bordas da imagem
             if len(approx) == 4:
-                print(cv2.contourArea(c))
+                # print(cv2.contourArea(c))
                 contornos = approx
                 img_recortada = four_point_transform(img, contornos.reshape(4, 2) * ratio)
 
-                img_temp = img_reduzida.copy()
-                cv2.drawContours(img_temp, [contornos], -1, (0, 255, 0), 2)
-                cv2.imshow('Contornos', img_temp)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+                # img_temp = img_reduzida.copy()
+                # cv2.drawContours(img_temp, [contornos], -1, (0, 255, 0), 2)
+                # cv2.imshow('Contornos', img_temp)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
 
-                # return img_recortada  # Retorna os pontos que definem as dimensões da borda e a
-                return ndimage.rotate(img_recortada, 180)  # Rotaciona a imagem original em 180º
+                return img_recortada  # Retorna a imagem recortada
+                # return ndimage.rotate(img_recortada, 180)  # Rotaciona a imagem original em 180º
             else:
                 return False
 
@@ -225,11 +224,10 @@ class Scanner:
         nome_arquivo = 'imagens/foto-' + self._obter_data() + '.jpg'
 
         cv2.imwrite(nome_arquivo, img)
-        print(self.time1)
-        print(time.time() - self.time1)
 
         # escreve_lcd('Imagem salva')
         print('Imagem salva')
+        print('Tempo de processamento: {:.2f} s'.format(time.time() - self.time1))
         # escreve_lcd(self.AGUARDANDO)
         print(self.AGUARDANDO)
 
